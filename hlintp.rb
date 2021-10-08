@@ -3,39 +3,27 @@
 # Usage: hlintp.rb file.hl
 # This is a work in progress. Be prepared. I'm not.
 
-# Record when this starts, for specs after run
-msec = Time.now.to_f * 1000;
+module HanoiLove
+  # ResultStruct = Struct.new :stdout, :stack, :exitcode
+  def self.run code, stdout = StringIO.new, stdin = STDIN
 
-code = ARGF.read
-le = code.length # input length
-cl = 0 # cleaned length
+# # Record when this starts, for specs after run
+# msec = Time.now.to_f * 1000;
+
 cp = -1 # code pointer
-ccp = 0 # code pointer for cleaned code
 
-# Hanoi Love commands are as follows: . ' , ; ` "  : !
-commands = [".", "'", ",", ";", "`", "\"", ":", "!"]
+code.delete "^.',;`:!\""  # Hanoi Love commands are as follows: . ' , ; ` "  : !
 
-# Cleaned code will end up here.
-cleaned = []
-
-until (cp+=1) == le
-  commands.include?(code[cp]) && (cleaned.push code[cp]) && ccp += 1
-end
-# Restore defaults
-cp = -1
 # Make cl exist now
-cl = cleaned.length
+cl = code.length # cleaned code length
 
 # HL specific stuff
 rg = 0 # value in register (0-255)
+sa, sb, sc, sd = [], [], []. []
 st = [sa, sb, sc, sd] # current stack (for A-D)
-sa = []
-sb = []
-sc = []
-sd = []
 
 # Interpreting!
-until (cp+=1) == cl
+until cl == cp += 1
   case cleaned[cp]
     when ?.  then st = (st + 1) % 4
     when ?'  then # print "\'"
@@ -50,7 +38,10 @@ end
 
 # Benchmarking
 runtime = Time.now.to_f * 1000 - msec
- 
-puts ""
-puts ""
-puts "Your program took #{runtime} msecs."
+
+  end
+end
+
+# puts ""
+# puts ""
+# puts "Your program took #{runtime} msecs."
