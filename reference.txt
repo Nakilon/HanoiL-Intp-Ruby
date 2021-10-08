@@ -1,0 +1,196 @@
+Hanoi Love -- A slim stack based language
+Written April 30, 2001, by Jeffry Johnston <hanoilove@kidsquid.com>
+
+Description
+------------
+Hanoi Love was created as a minimal yet semi-powerful stack based language.
+The name comes from the "Towers of Hanoi" game.
+
+Special Thanks to Cliff Biffle for the inspiration that I received from his
+Spaz stack language.  Also to Urban Mueller for BrainF***.
+
+
+Instruction Set
+---------------
+There are 8 instructions:
+
+.       Selects the next stack in alphabetic sequence (will loop to stack A).
+'       Copies the byte in the register and pushes it onto the stack.
+,       Pops a byte from the stack and moves it into the register.  
+;       Pops a byte from the stack and adds it to the register.
+`       Pops a byte from the stack and subtracts it from the register.
+"       I/O mode prefix.  The next instruction will pop from the Standard
+        Input or push to the Standard Output rather than to a stack.
+:       If the register is 0 then any following instructions are skipped
+        until matching "!" instruction is reached.
+!       Does nothing if matching a ":", otherwise exits the program.  
+
+
+Memory and Program flow
+-----------------------
+The register and stack locations A, B, and C are 8 bits wide.  Stack
+location D should be sized wide enough to store the location of any part of
+the program for later recall.  
+
+Each instruction line is processed in the normal left to right fashion.
+The instruction pointer starts to the left of the first instruction.  A loop
+is formed:  The instruction pointer is incremented.  Then the current
+instruction is executed.  This process repeats until the "!" instruction
+is reached or there are no more instructions to execute.
+
+
+Register
+--------
+There is one internal register used for temporary storage to permit
+operations between stacks.  This is initially set to the value 0.
+
+
+Stacks
+------
+There are 4 main stacks (A, B, C, D).  They are all initially empty and their
+size is limited only by the amount of available memory.  If a stack is
+empty when asked to pop a value, the value returned will be 1 for A, 0 for B
+and C (D never returns a value).
+
+Stacks A, B, and C are for general program use.  The program is first set to
+use stack A.
+
+Stack D is for storing the location of instructions.  When a push operation
+is performed here, the previous instruction location (current location minus
+one) is pushed onto the stack.  When a pop operation is performed the new
+instruction location is popped from the stack.  If a ";" or "`" instruction
+is performed on this stack then the instruction location is popped, but no
+further action is taken (this is useful for breaking out of loops).
+
+
+Example Programs
+----------------
+Echo: (Outputs back any input received.  Enter char 255 to end) 
+...'.,'";:`"'...,!
+
+
+Hanoi Love is BF complete
+-------------------------
+These sequences are long because they don't assume anything.  They are
+written for a 1:1 translation.
+
+>       ..,...'...
+<       .,.'..
++       ,.;'...
+-       .,...`.'...
+.       .,'"'...
+,       .,",'... 
+[       ...'..,'...:
+]       ...,!...;.
+
+
+Quick and dirty BF -> Hanoi Love translation program
+----------------------------------------------------
+F$ = "prime"
+DIM B$(1 TO 8)
+FOR A = 1 TO 8: READ B$(A): B = INSTR(1, B$(A), "@")
+  IF B > 0 THEN MID$(B$(A), B, 1) = CHR$(34)
+NEXT A
+OPEN F$ + ".BF" FOR BINARY AS #1: A$ = INPUT$(LOF(1), 1): CLOSE #1
+OPEN F$ + ".HL" FOR OUTPUT AS #1
+FOR A = 1 TO LEN(A$)
+  B = INSTR(1, "><+-.,[]", MID$(A$, A, 1)): IF B > 0 THEN PRINT #1, B$(B);
+NEXT A
+CLOSE #1: END
+DATA "..,...'...",".,.'..",",.;'...",".,...`.'..."
+DATA ".,'@'...",".,@,'...","...'..,'...:","...,!...;."
+
+
+QuickBasic interpreter
+----------------------
+'Hanoi Love interpreter
+'Programmed by Jeffry Johnston, April 30, 2001.
+'See hanoi.txt for documentation
+
+DEFINT A-Z: LOCATE , , 1: CLS
+DIM ABC$(2): DIM D(100, 1): IP = 0: SS = 0: R = 0: IO = 0: SP = -1: IFF = 0
+FILE$ = COMMAND$
+DO WHILE FILE$ = "": INPUT "Please enter the source filename: ", FILE$: LOOP
+OPEN FILE$ FOR BINARY AS #1: PROGRAM$ = INPUT$(LOF(1), 1): CLOSE #1
+'PROGRAM$ = "...'.,'" + CHR$(34) + ";:`" + CHR$(34) + "'...,!"
+L = LEN(PROGRAM$)
+OPEN "CONS:" FOR OUTPUT AS #1
+DO
+  IP = IP + 1: IPVALUE$ = MID$(PROGRAM$, IP, 1)
+  'PRINT #1, IPVALUE$; "IP="; IP; "SS="; SS; "SP="; SP; "IFF="; IFF; "R="; R: COLOR 7: DO: LOOP WHILE INKEY$ = ""
+  SELECT CASE IPVALUE$
+  CASE "."
+    SS = SS + 1: IF SS > 3 THEN SS = 0
+  CASE "'" '^
+    IF SS = 3 THEN
+      SP = SP + 1: D(SP, 0) = IP - 1: D(SP, 1) = IFF
+    ELSE
+      IF IO = 1 THEN PRINT #1, CHR$(R);  ELSE ABC$(SS) = ABC$(SS) + CHR$(R)
+    END IF
+  CASE "," 'v
+    IF SS = 3 THEN
+      IF SP >= 0 THEN
+        IP = D(SP, 0): IFF = D(SP, 1): SP = SP - 1
+      ELSE
+        IP = 0: IFF = 0
+      END IF
+    ELSE
+      IF IO = 1 THEN
+        R = ASC(INPUT$(1))
+      ELSE
+        IF LEN(ABC$(SS)) = 0 THEN
+          IF SS = 0 THEN R = 1 ELSE R = 0
+        ELSE
+          R = ASC(MID$(ABC$(SS), LEN(ABC$(SS)), 1))
+          ABC$(SS) = MID$(ABC$(SS), 1, LEN(ABC$(SS)) - 1)
+        END IF
+      END IF
+    END IF
+  CASE ";" '+
+    IF SS = 3 THEN
+      IF SP >= 0 THEN SP = SP - 1
+    ELSE
+      IF IO = 1 THEN
+        R = (R + ASC(INPUT$(1))) MOD 256
+      ELSE
+        IF LEN(ABC$(SS)) = 0 THEN
+          IF SS = 0 THEN R = (R + 1) MOD 256
+        ELSE
+          R = (R + ASC(MID$(ABC$(SS), LEN(ABC$(SS)), 1))) MOD 256
+          ABC$(SS) = MID$(ABC$(SS), 1, LEN(ABC$(SS)) - 1)
+        END IF
+      END IF
+    END IF
+  CASE "`" '-
+    IF SS = 3 THEN
+      IF SP >= 0 THEN SP = SP - 1
+    ELSE
+      IF IO = 1 THEN
+        R = (256 + R - ASC(INPUT$(1))) MOD 256
+      ELSE
+        IF LEN(ABC$(SS)) = 0 THEN
+          IF SS = 0 THEN R = (R + 255) MOD 256
+        ELSE
+          R = (256 + R - ASC(MID$(ABC$(SS), LEN(ABC$(SS)), 1))) MOD 256
+          ABC$(SS) = MID$(ABC$(SS), 1, LEN(ABC$(SS)) - 1)
+        END IF
+      END IF
+    END IF
+  CASE CHR$(34)
+    IO = 2
+  CASE ":"
+    IF R = 0 THEN
+      LVL = 1
+      DO
+        IP = IP + 1: IPVALUE$ = MID$(PROGRAM$, IP, 1)
+        IF IPVALUE$ = ":" THEN LVL = LVL + 1
+        IF IPVALUE$ = "!" THEN LVL = LVL - 1
+      LOOP WHILE LVL > 0
+    ELSE
+      IFF = IFF + 1
+    END IF
+  CASE "!"
+    IF IFF = 0 THEN EXIT DO ELSE IFF = IFF - 1
+  END SELECT
+  IF IO > 0 THEN IO = IO - 1
+LOOP WHILE IP < L
